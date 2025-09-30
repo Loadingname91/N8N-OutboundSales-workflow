@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("outbound_workflow")
 
 
-class WorkflowState(TypedDict, total=False):x
+class WorkflowState(TypedDict, total=False):
     pending_urls: List[str]
     current_company_url: str
     current_domain: str
@@ -133,7 +133,8 @@ class HunterClient:
 
 class HtmlFetcher:
     def __init__(self, http_client: Optional[httpx.Client] = None):
-        self.http = http_client or httpx.Client(follow_redirects=True, timeout=30)
+        self.http = http_client or httpx.Client(
+            follow_redirects=True, timeout=30)
 
     @retry(wait=wait_exponential(1, 60), stop=stop_after_attempt(5))
     def fetch(self, url: str) -> str:
@@ -205,7 +206,7 @@ def load_company_urls_node(config: WorkflowConfig, sheets_reader: GoogleSheetsCl
 def next_company_node(state: WorkflowState) -> WorkflowState:
     pending = state.get("pending_urls", [])
     if not pending:
-        return {}
+        return {"current_company_url": None}
     current = pending[0]
     remaining = pending[1:]
     domain = extract_domain(current)
@@ -359,7 +360,8 @@ def generate_subject_node(openai_client: OpenAIClient):
         hunter_data = state.get("hunter_response", {})
         summary = state.get("summary", "")
         contact_name = state.get("contact_name", "")
-        organization = hunter_data.get("organization") or state.get("current_domain")
+        organization = hunter_data.get(
+            "organization") or state.get("current_domain")
         prompt = (
             f"Context:\nSummary of company: {summary}\n"
             f"Company Name: {organization}\n"
@@ -380,7 +382,8 @@ def create_gmail_draft_node(gmail_client: GmailClient):
         body = state.get("email_body")
         recipient = state.get("contact_email")
         if not (subject and body and recipient):
-            raise ValueError("Missing subject, body, or recipient for Gmail draft.")
+            raise ValueError(
+                "Missing subject, body, or recipient for Gmail draft.")
         if not validate_email(recipient):
             raise ValueError(f"Invalid recipient email: {recipient}")
         draft = gmail_client.create_draft(
@@ -416,7 +419,7 @@ def accumulate_results_node(state: WorkflowState) -> WorkflowState:
         "contact_name": state.get("contact_name"),
         "subject": state.get("subject"),
         "email_body": state.get("email_body"),
-        "gmail_draft_id": state.get("gmail_draft", {}).get("id"),
+        "gmail_draft_id": state.get("gmail_draft", {}) if "gmail_draft" in state else None,
         "success_logged": state.get("success_logged", False),
         "failure_logged": state.get("failure_logged", False),
     }
@@ -435,7 +438,8 @@ def build_graph(config: WorkflowConfig) -> StateGraph:
     graph = StateGraph(WorkflowState)
 
     graph.add_node("manual_trigger", manual_trigger_node)
-    graph.add_node("load_company_urls", load_company_urls_node(config, sheets_reader))
+    graph.add_node("load_company_urls",
+                   load_company_urls_node(config, sheets_reader))
     graph.add_node("next_company", next_company_node)
     graph.add_node("fetch_html", fetch_html_node(fetcher))
     graph.add_node("extract_body_text", extract_body_text_node)
@@ -443,10 +447,12 @@ def build_graph(config: WorkflowConfig) -> StateGraph:
     graph.add_node("hunter_lookup", hunter_lookup_node(hunter_client))
     graph.add_node("log_failures", log_failures_node(config, sheets_writer))
     graph.add_node("prepare_success", prepare_success_node)
-    graph.add_node("generate_email_body", generate_email_body_node(openai_client))
+    graph.add_node("generate_email_body",
+                   generate_email_body_node(openai_client))
     graph.add_node("generate_subject", generate_subject_node(openai_client))
     graph.add_node("create_gmail_draft", create_gmail_draft_node(gmail_client))
-    graph.add_node("update_success_log", update_success_log_node(config, sheets_writer))
+    graph.add_node("update_success_log",
+                   update_success_log_node(config, sheets_writer))
     graph.add_node("accumulate_results", accumulate_results_node)
 
     graph.set_entry_point("manual_trigger")
@@ -463,6 +469,7 @@ def build_graph(config: WorkflowConfig) -> StateGraph:
         has_emails,
         {"has_email": "prepare_success", "no_email": "log_failures"},
     )
+    # graph.add_edge("log_failures", "next_company")
     graph.add_edge("log_failures", "accumulate_results")
     graph.add_edge("prepare_success", "generate_email_body")
     graph.add_edge("generate_email_body", "generate_subject")
@@ -504,5 +511,6 @@ def build_config_from_env() -> WorkflowConfig:
 if __name__ == "__main__":
     config = build_config_from_env()
     graph = build_graph(config)
-    final_state = graph.invoke({})
-    logger.info("Workflow finished with %d items", len(final_state.get("results", [])))
+    final_state = graph.invoke({}, {"recursion_limit": 100})
+    logger.info("Workflow finished with %d items",
+                len(final_state.get("results", [])))

@@ -1,17 +1,39 @@
 from google_auth_oauthlib.flow import InstalledAppFlow
+import json
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/gmail.modify",
 ]
 
-flow = InstalledAppFlow.from_client_secrets_file("client_secret.json", SCOPES)
 
-auth_url, _ = flow.authorization_url(prompt="consent")
-print("Go to this URL:", auth_url)
+def main():
+    flow = InstalledAppFlow.from_client_secrets_file(
+        "client_secret.json", SCOPES, redirect_uri="http://localhost:8080/"
+    )
 
-code = input("Enter the authorization code: ")
-flow.fetch_token(code=code)
+    # Generate the authorization URL
+    auth_url, _ = flow.authorization_url(prompt="consent")
 
-creds = flow.credentials
-print(creds.to_json())
+    print("Please go to this URL and authorize the application:")
+    print(auth_url)
+    print("-" * 30)
+
+    # Wait for the user to paste the authorization code
+    code = input("Enter the authorization code from the browser: ")
+
+    # Exchange the code for a token
+    flow.fetch_token(code=code)
+
+    creds = flow.credentials
+    token_json_string = creds.to_json()
+
+    with open("token.json", "w") as token_file:
+        token_file.write(token_json_string)
+
+    print("\nSUCCESS! Token saved to token.json")
+    print(f"\nToken content:\n{token_json_string}")
+
+
+if __name__ == "__main__":
+    main()
