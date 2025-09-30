@@ -206,7 +206,7 @@ def load_company_urls_node(config: WorkflowConfig, sheets_reader: GoogleSheetsCl
 def next_company_node(state: WorkflowState) -> WorkflowState:
     pending = state.get("pending_urls", [])
     if not pending:
-        return {"current_company_url": None}
+        return {}
     current = pending[0]
     remaining = pending[1:]
     domain = extract_domain(current)
@@ -419,7 +419,7 @@ def accumulate_results_node(state: WorkflowState) -> WorkflowState:
         "contact_name": state.get("contact_name"),
         "subject": state.get("subject"),
         "email_body": state.get("email_body"),
-        "gmail_draft_id": state.get("gmail_draft", {}) if "gmail_draft" in state else None,
+        "gmail_draft_id": state.get("gmail_draft", {}).get("id"),
         "success_logged": state.get("success_logged", False),
         "failure_logged": state.get("failure_logged", False),
     }
@@ -469,8 +469,7 @@ def build_graph(config: WorkflowConfig) -> StateGraph:
         has_emails,
         {"has_email": "prepare_success", "no_email": "log_failures"},
     )
-    # graph.add_edge("log_failures", "next_company")
-    graph.add_edge("log_failures", "accumulate_results")
+    graph.add_edge("log_failures", "next_company")
     graph.add_edge("prepare_success", "generate_email_body")
     graph.add_edge("generate_email_body", "generate_subject")
     graph.add_edge("generate_subject", "create_gmail_draft")
