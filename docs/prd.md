@@ -121,10 +121,10 @@ Success Path: → OpenAI- Summarizer
 Error Path: Workflow stops on extraction failure
 
 5. OpenAI- Summarizer
-Functionality: Uses GPT-4-turbo to generate a concise summary of the company based on website content.
+Functionality: Uses gpt-4o-mini to generate a concise summary of the company based on website content.
 Built-in Parameters to Replicate:
 
-Model selection: GPT-4-turbo
+Model selection: gpt-4o-mini
 Message format: Single user message
 Authentication: API key
 Temperature/options: Default settings
@@ -186,7 +186,7 @@ Output: Same data routed to appropriate branch
 
 Success Path:
 
-If emails found → OpenAI1- email body AND Edit Fields-Prepare Update Data
+If emails found → Edit Fields-Prepare Update Data
 If no emails → Google Sheets- Log Failed Lookups
 
 Error Path: Routes to false branch on evaluation error
@@ -211,11 +211,11 @@ Data Mapping:
 Input: Domain from Hunter node
 Output: Confirmation of row added/updated
 
-Success Path: Workflow ends for this item
+Success Path: Workflow continues to the next company.
 Error Path: Workflow stops on write failure
 
 9. Edit Fields-Prepare Update Data
-Functionality: Prepares data structure for updating the success log with company URL.
+Functionality: Acts as a marker node to initialize the success path. In the Python implementation, it resets the `success_logged` state.
 Built-in Parameters to Replicate:
 
 Operation: Set fields
@@ -223,21 +223,21 @@ Assignment type: Manual value mapping
 
 Workflow-Specific Configuration:
 
-Field assignment: Set "companyUrl" field with the original company URL from Google Sheets
+Field assignment: Sets `success_logged` to `false`.
 
 Data Mapping:
 
 Input: Current execution data
-Output: Object with companyUrl field
+Output: Object with `success_logged: false`
 
-Success Path: → Google Sheets - Update Success Log
+Success Path: → OpenAI1- email body
 Error Path: Workflow stops on error
 
 10. OpenAI1- email body
-Functionality: Generates personalized cold email body using GPT-4-turbo based on company summary and contact information.
+Functionality: Generates personalized cold email body using gpt-4o-mini based on company summary and contact information.
 Built-in Parameters to Replicate:
 
-Model: GPT-4-turbo
+Model: gpt-4o-mini
 Authentication: API key
 Message format: Single user message
 
@@ -261,10 +261,10 @@ Success Path: → OpenAI- subject
 Error Path: Workflow stops on API error
 
 11. OpenAI- subject
-Functionality: Generates email subject line using GPT-4-turbo.
+Functionality: Generates email subject line using gpt-4o-mini.
 Built-in Parameters to Replicate:
 
-Model: GPT-4-turbo
+Model: gpt-4o-mini
 Authentication: API key
 Message format: Single user message
 
@@ -301,7 +301,7 @@ Data Mapping:
 Input: Subject and body from OpenAI nodes, email from Hunter
 Output: Draft creation confirmation
 
-Success Path: Workflow ends for this item
+Success Path: → Google Sheets - Update Success Log
 Error Path: Workflow stops on Gmail API error
 
 13. Google Sheets - Update Success Log
@@ -309,7 +309,7 @@ Functionality: Updates the original spreadsheet with successful contact informat
 Built-in Parameters to Replicate:
 
 Operation: Append or update
-Authentication: OAuth2
+Authentication: OAuth2 (via service client)
 Matching columns: companyUrl
 Update behavior: Update if exists, append if new
 
@@ -330,7 +330,7 @@ Data Mapping:
 Input: Contact data from Hunter and prepared company URL
 Output: Confirmation of row updated
 
-Success Path: Workflow ends for this item
+Success Path: Workflow continues to the next company.
 Error Path: Workflow stops on write failure
 
 Additional Express.js Implementation Requirements
