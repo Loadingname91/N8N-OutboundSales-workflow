@@ -142,6 +142,7 @@ After reading custom node files, analyze how they integrate with the overall pro
 - Create proper node functions with state parameter
 - Set up correct edges and conditional routing
 - Include proper error handling and logging
+- When invoking the compiled graph, set a default recursion limit of 100 (e.g., `app.invoke(initial_state, {"recursion_limit": 100})`). This is crucial for workflows that loop over many items.
 
 ### 4. Code Organization
 - Structure code with clear imports and dependencies
@@ -180,10 +181,43 @@ List all required Python packages and versions needed to run the LangGraph workf
 ### 4. Configuration Notes
 - Environment variables needed
 - API keys or credentials required
-- Any setup instructions
+- Any setup instructions, including Google OAuth setup:
+  - Explain the need for `credentials.json` from Google Cloud Console.
+  - Describe the first-run interactive authentication flow: the script will print a URL, the user must visit it, authorize the application, and paste the resulting code back into the terminal.
+  - Mention that a `token.json` file will be created to store credentials for subsequent runs.
 
 ### 5. Testing Instructions
 Provide basic instructions on how to test the converted workflow.
+
+### 6. Graph Flow and Recursion Analysis 
+After generating the Python code, you must provide a separate analysis of the graph's control flow. The purpose of this analysis is to formally verify that the implementation is robust and free of common recursion traps or dead-end paths, especially in workflows that iterate over a list of items.
+
+Your analysis must include the following parts:
+
+A. Loop Structure Identification
+First, identify and name the key components of the primary loop in the generated graph.
+
+Controller Node: State the name of the single node that manages the iteration (i.e., the one that selects the next item from the list).
+
+Conditional Exit: Identify the conditional edge and the condition that allows the workflow to terminate gracefully (i.e., by routing to END when the list of items is empty).
+
+Processing Entry Point: Name the first node that begins the processing for a single item after it's been selected by the controller.
+
+B. Path Tracing and Verification
+Next, trace the execution paths for a single item to verify that all branches loop back correctly.
+
+Success Path Trace: Document the sequence of nodes that execute when an item is processed successfully. You must explicitly state that the final node in this path connects back to the Controller Node.
+
+Example Format: start_processing -> step_2 -> step_3_success -> log_success -> (Loops back to) Controller Node
+
+Failure Path Trace(s): Identify every critical failure or alternative branch in the workflow (e.g., an "if" condition is not met, an API call fails, no data is found). For each distinct failure path, document its node sequence and confirm that it also connects back to the Controller Node.
+
+Example Format (No Data Found): start_processing -> step_2_api_call -> (conditional_no_data) -> log_failure -> (Loops back to) Controller Node
+
+C. Final Verdict
+Provide a brief, concluding statement confirming that the graph architecture is sound.
+
+Example Verdict: "The analysis confirms that all success and failure branches for a single item's lifecycle correctly route back to the controller node. No dead-end paths or recursion traps were identified. The workflow will reliably process all items in the initial list."
 
 ## Additional Considerations
 - Maintain error handling from original workflow
@@ -214,4 +248,3 @@ Please analyze the provided n8n workflow, read all referenced custom node requir
 ```
 
 ```
-
