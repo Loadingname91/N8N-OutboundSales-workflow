@@ -206,7 +206,7 @@ def load_company_urls_node(config: WorkflowConfig, sheets_reader: GoogleSheetsCl
 def next_company_node(state: WorkflowState) -> WorkflowState:
     pending = state.get("pending_urls", [])
     if not pending:
-        return {}
+        return {'current_company_url':""}
     current = pending[0]
     remaining = pending[1:]
     domain = extract_domain(current)
